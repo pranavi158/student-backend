@@ -4,16 +4,18 @@ const mongoose = require('mongoose');
 const Student = require('./models/student');
 const Course = require('./models/course');
 
-
 const app = express();
 app.use(express.json());
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ MongoDB connected successfully'))
+  .then(() => {
+    console.log('✅ MongoDB connected successfully');
+    createInitialData(); // Only call after DB connects
+  })
   .catch((err) => console.error('❌ MongoDB connection error:', err));
 
-// Example Routes (you can add your own routes)
+// Example Routes
 app.get('/', (req, res) => {
   res.send('🎉 Student Management System Backend Running');
 });
@@ -45,20 +47,27 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
 
-// You can create courses and students initially using a script if needed, 
-// but make sure it doesn't interfere with the server logic in production.
+// Initial Data Creation (with check to avoid duplicates)
 async function createInitialData() {
-  const course1 = await Course.create({ courseName: 'Math 101', instructor: 'Dr. Smith', credits: 3 });
-  const course2 = await Course.create({ courseName: 'Physics 101', instructor: 'Dr. Jane', credits: 4 });
+  try {
+    const existingStudent = await Student.findOne({ email: 'alice@example.com' });
 
-  const student = await Student.create({
-    name: 'Alice',
-    email: 'alice@example.com',
-    age: 20,
-    enrolledCourses: [course1._id, course2._id]
-  });
+    if (!existingStudent) {
+      const course1 = await Course.create({ courseName: 'Math 101', instructor: 'Dr. Smith', credits: 3 });
+      const course2 = await Course.create({ courseName: 'Physics 101', instructor: 'Dr. Jane', credits: 4 });
 
-  console.log('Student Created:', student);
+      const student = await Student.create({
+        name: 'Alice',
+        email: 'alice@example.com',
+        age: 20,
+        enrolledCourses: [course1._id, course2._id]
+      });
+
+      console.log('🎯 Student Created:', student);
+    } else {
+      console.log('⚡ Student already exists, skipping creation.');
+    }
+  } catch (err) {
+    console.error('❌ Error creating initial data:', err);
+  }
 }
-
-createInitialData().catch((err) => console.error('Error creating initial data:', err));
